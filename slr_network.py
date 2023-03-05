@@ -8,6 +8,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 #from modules import BiLSTMLayer, TemporalConv
+# makes uses of parlance/ctcdecode library
+# alternate: https://github.com/githubharald/CTCDecoder/blob/master/ctc_decoder/beam_search.py
+
+import ctcdecode
+from itertools import groupby
+import torch.nn.functional as F
+
 
 class TemporalConv(nn.Module):
     def __init__(self, input_size, hidden_size, conv_type=2, use_bn=False, num_classes=-1):
@@ -83,7 +90,34 @@ class BiLSTMLayer(nn.Module):
         out = self.fc(h_n_concat)
         return out
 
+class Decode(object):
+    def __init__(self, gloss_dict, num_classes, blank_id=0):
+        self.i2g_dict = dict((v[0], k) for k, v in gloss_dict.items())
+        self.g2i_dict = {v: k for k, v in self.i2g_dict.items()}
+        self.num_classes = num_classes
+        self.blank_id = blank_id
+        vocab = [chr(x) for x in range(20000, 20000 + num_classes)]
+        self.ctc_decoder = ctcdecode.CTCBeamDecoder(vocab, beam_width=10, blank_id=blank_id,
+                                                    num_processes=10)
 
+    def decode(self, nn_output, vid_lgt):
+        # input : (batch_size, sequence_length, feature_dim)
+        nn_output = nn_output.permute(1, 0, 2)
+        return self.BeamSearch(nn_output, vid_lgt)
+
+    def BeamSearch(self, nn_output, vid_lgt):
+        nn_output = nn_output.softmax(-1).cpu()
+        vid_lgt = vid_lgt.cpu()
+        beam_result, beam_scores, timesteps, out_seq_len = self.ctc_decoder.decode(nn_output, vid_lgt)
+        ret_list = []
+        for batch_idx in range(len(nn_output)):
+            # for each sequence
+            first_result = beam_result[batch_idx][0][:out_seq_len[batch_idx][0]]
+            if len(first_result) != 0:
+                first_result = torch.stack([x[0] for x in groupby(first_result)])
+            ret_list.append([(self.i2g_dict[int(gloss_id)], idx) for idx, gloss_id in
+                             enumerate(first_result)])
+        return ret_list
 
 
 
@@ -107,7 +141,7 @@ class SLRModel(nn.Module):
         self.temporal_model = BiLSTMLayer(rnn_type='LSTM', input_size=hidden_size, hidden_size=hidden_size,
                                               num_layers=2, bidirectional=True)
         # TODO: implemnt the decoder
-        # self.decoder = utils.Decode(gloss_dict, num_classes)
+        self.decoder = utils.Decode(gloss_dict, num_classes)
         self.classifier = nn.Linear(hidden_size, self.num_classes)
 
 
