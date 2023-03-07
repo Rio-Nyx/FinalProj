@@ -141,7 +141,7 @@ class SLRModel(nn.Module):
         self.temporal_model = BiLSTMLayer(rnn_type='LSTM', input_size=hidden_size, hidden_size=hidden_size,
                                               num_layers=2, bidirectional=True)
         # TODO: implemnt the decoder
-        self.decoder = utils.Decode(gloss_dict, num_classes)
+        self.decoder = Decode(gloss_dict, num_classes)
         self.classifier = nn.Linear(hidden_size, self.num_classes)
 
 
