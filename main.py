@@ -85,8 +85,15 @@ class Processor:
         dataloader = DataLoader(dataset_train, shuffle=True)
         for epoch in range(self.arg.num_epoch):
             print('epoch running...')
-
-
+            seq_train(self.data_loader['train'], self.model, self.optimizer, self.device, epoch)
+            if epoch == self.arg.num_epoch - 1:
+                save_path = self.arg.work_dir + "sign_lang_model.pt"
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict(),
+                    'scheduler_state_dict': self.optimizer.scheduler.state_dict(),
+                }, save_path)
 
 
 
