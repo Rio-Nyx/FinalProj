@@ -13,6 +13,7 @@ import numpy as np
 from slr_network import SLRModel
 faulthandler.enable()
 from dataloader import SignDataset
+from seq_scripts import seq_train
 
 class Processor:
     def __init__(self, arg):
@@ -85,7 +86,8 @@ class Processor:
         dataloader = DataLoader(dataset_train, shuffle=True)
         for epoch in range(self.arg.num_epoch):
             print('epoch running...')
-            seq_train(self.data_loader['train'], self.model, self.optimizer, self.device, epoch)
+            loss = seq_train(self.data_loader['train'], self.model, self.optimizer, self.device, epoch)
+            print("At epoch " + epoch + " loss value is " + loss)
             if epoch == self.arg.num_epoch - 1:
                 save_path = self.arg.work_dir + "sign_lang_model.pt"
                 torch.save({
