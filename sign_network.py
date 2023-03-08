@@ -14,7 +14,7 @@ class Signmodel(nn.Module):
         out = self.conv2d(x)
         # TODO : out.permute(2,0,1)
         return {
-            "conv_out" : out
+            "conv_out" : out,
             "conv_len" : x_lgt
         }
 
